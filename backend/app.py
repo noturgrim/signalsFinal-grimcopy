@@ -11,9 +11,14 @@ from scipy.fft import rfft, rfftfreq
 from scipy.io import wavfile
 import io
 import base64
+import os
 
 app = Flask(__name__)
-CORS(app)
+
+# CORS Configuration - Allow frontend origin
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+CORS(app, resources={r"/api/*": {"origins": [FRONTEND_URL, "http://localhost:3000"]}})
+
 
 # Enable response compression for better performance
 app.config['JSON_SORT_KEYS'] = False  # Faster JSON serialization
@@ -407,11 +412,17 @@ def detect_hum():
 
 
 if __name__ == '__main__':
+    # Get port from environment variable (Render provides this)
+    port = int(os.environ.get('PORT', 5000))
+    # Get debug mode from environment
+    debug = os.environ.get('FLASK_ENV', 'development') == 'development'
+    
     print("=" * 60)
     print("Audio Processing API Server")
     print("=" * 60)
-    print("Starting Flask server on http://localhost:5000")
-    print("API Endpoint: POST http://localhost:5000/api/process-audio")
+    print(f"Starting Flask server on port {port}")
+    print(f"API Endpoint: POST http://localhost:{port}/api/process-audio")
     print("=" * 60)
-    app.run(debug=True, port=5000, host='0.0.0.0')
+    
+    app.run(debug=debug, port=port, host='0.0.0.0')
 

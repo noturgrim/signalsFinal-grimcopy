@@ -1,5 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 
+// Get API URL from environment variable
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 const App = () => {
   // State management
   const [selectedFile, setSelectedFile] = useState(null);
@@ -115,7 +118,7 @@ const App = () => {
         const formData = new FormData();
         formData.append("file", file);
 
-        const response = await fetch("http://localhost:5000/api/detect-hum", {
+        const response = await fetch(`${API_URL}/api/detect-hum`, {
           method: "POST",
           body: formData,
         });
@@ -270,7 +273,7 @@ const App = () => {
       formData.append("file", selectedFile);
       formData.append("humFrequency", humFrequency);
 
-      const response = await fetch("http://localhost:5000/api/process-audio", {
+      const response = await fetch(`${API_URL}/api/process-audio`, {
         method: "POST",
         body: formData,
         signal: abortController.signal,

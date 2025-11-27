@@ -80,36 +80,33 @@ def design_notch_filter(center_freq, sample_rate, quality_factor=30):
     Returns:
         b, a: Filter coefficients
     """
-    # Normalize frequency (0 to 1, where 1 is Nyquist frequency)
-    nyquist = sample_rate / 2.0
-    normalized_freq = center_freq / nyquist
-    
-    # Design notch filter
-    b, a = signal.iirnotch(normalized_freq, quality_factor, sample_rate)
+    # Design notch filter using frequency in Hz and sample rate
+    # iirnotch(w0, Q, fs) where w0 is the frequency to remove
+    b, a = signal.iirnotch(center_freq, quality_factor, sample_rate)
     
     return b, a
 
 
 def apply_notch_filter(audio_data, b, a):
     """
-    Apply notch filter to audio data.
+    Apply notch filter to audio data using zero-phase filtering.
     Handles both mono and stereo audio.
     """
     if len(audio_data.shape) == 1:
-        # Mono audio
-        filtered_data = signal.lfilter(b, a, audio_data)
+        # Mono audio - use filtfilt for zero-phase filtering
+        filtered_data = signal.filtfilt(b, a, audio_data)
     else:
         # Stereo audio - filter each channel
         filtered_data = np.zeros_like(audio_data)
         for channel in range(audio_data.shape[1]):
-            filtered_data[:, channel] = signal.lfilter(b, a, audio_data[:, channel])
+            filtered_data[:, channel] = signal.filtfilt(b, a, audio_data[:, channel])
     
     return filtered_data
 
 
 def remove_hum(audio_data, sample_rate, hum_freq=60, quality_factor=30):
     """
-    Remove power line hum and its first harmonic from audio.
+    Remove power line hum and its harmonics from audio.
     
     Args:
         audio_data: Audio signal as numpy array
@@ -123,22 +120,21 @@ def remove_hum(audio_data, sample_rate, hum_freq=60, quality_factor=30):
     nyquist = sample_rate / 2.0
     filtered_data = audio_data.copy()
     
-    # Apply notch filter at fundamental frequency
-    if hum_freq < nyquist:
-        b, a = design_notch_filter(hum_freq, sample_rate, quality_factor)
-        filtered_data = apply_notch_filter(filtered_data, b, a)
+    print(f"Processing audio: Sample rate={sample_rate}, Nyquist={nyquist}, Hum freq={hum_freq}")
     
-    # Apply notch filter at first harmonic (2 * f0)
-    harmonic_freq = 2 * hum_freq
-    if harmonic_freq < nyquist:
-        b, a = design_notch_filter(harmonic_freq, sample_rate, quality_factor)
-        filtered_data = apply_notch_filter(filtered_data, b, a)
+    # Apply notch filters at fundamental and harmonics
+    # Typically remove up to 5th harmonic for thorough hum removal
+    harmonics = [1, 2, 3, 4, 5]  # Fundamental and harmonics
     
-    # Apply notch filter at second harmonic (3 * f0) for better results
-    harmonic_freq_2 = 3 * hum_freq
-    if harmonic_freq_2 < nyquist:
-        b, a = design_notch_filter(harmonic_freq_2, sample_rate, quality_factor)
-        filtered_data = apply_notch_filter(filtered_data, b, a)
+    for harmonic in harmonics:
+        target_freq = hum_freq * harmonic
+        
+        if target_freq < nyquist:
+            print(f"Applying notch filter at {target_freq} Hz (harmonic {harmonic})")
+            b, a = design_notch_filter(target_freq, sample_rate, quality_factor)
+            filtered_data = apply_notch_filter(filtered_data, b, a)
+        else:
+            print(f"Skipping {target_freq} Hz (exceeds Nyquist frequency)")
     
     return filtered_data
 
@@ -150,14 +146,25 @@ def save_audio_to_base64(audio_data, sample_rate):
     Returns:
         Base64 encoded string of WAV file
     """
-    # Convert float32 back to int16 for WAV
+    # Ensure audio is float32 or float64
+    if audio_data.dtype not in [np.float32, np.float64]:
+        audio_data = audio_data.astype(np.float32)
+    
+    # Clip to valid range to prevent overflow
+    audio_data = np.clip(audio_data, -1.0, 1.0)
+    
+    # Convert float back to int16 for WAV
     audio_int16 = (audio_data * 32767).astype(np.int16)
+    
+    print(f"Converting to WAV: int16 range = [{audio_int16.min()}, {audio_int16.max()}]")
     
     # Create WAV file in memory
     with io.BytesIO() as wav_buffer:
         wavfile.write(wav_buffer, sample_rate, audio_int16)
         wav_buffer.seek(0)
         wav_bytes = wav_buffer.read()
+    
+    print(f"WAV file size: {len(wav_bytes)} bytes")
     
     # Encode to base64
     base64_audio = base64.b64encode(wav_bytes).decode('utf-8')
@@ -206,6 +213,9 @@ def process_audio():
         
         # Load audio file
         audio_data, sample_rate = load_audio_file(file_data, file_extension)
+        print(f"\n{'='*60}")
+        print(f"Loaded audio: shape={audio_data.shape}, sr={sample_rate}, dtype={audio_data.dtype}")
+        print(f"Audio range: min={audio_data.min():.3f}, max={audio_data.max():.3f}")
         
         # Process audio - remove hum
         filtered_audio = remove_hum(
@@ -214,6 +224,10 @@ def process_audio():
             hum_freq=hum_frequency,
             quality_factor=DEFAULT_QUALITY_FACTOR
         )
+        
+        print(f"Filtered audio: shape={filtered_audio.shape}, dtype={filtered_audio.dtype}")
+        print(f"Filtered range: min={filtered_audio.min():.3f}, max={filtered_audio.max():.3f}")
+        print(f"{'='*60}\n")
         
         # Convert to base64
         base64_audio = save_audio_to_base64(filtered_audio, sample_rate)

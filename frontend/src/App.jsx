@@ -147,7 +147,12 @@ const App = () => {
         </header>
 
         {/* Main Card */}
-        <div className="bg-white border border-slate-200 rounded-lg p-6 mb-4">
+        <div className="bg-white border border-slate-200 rounded-lg p-6 mb-4 relative">
+          {/* Processing Overlay */}
+          {isProcessing && (
+            <div className="absolute inset-0 bg-white/50 backdrop-blur-[2px] rounded-lg z-10" />
+          )}
+
           {/* Upload Section */}
           <div className="mb-5">
             <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -160,10 +165,15 @@ const App = () => {
                 onChange={handleFileChange}
                 className="hidden"
                 id="audio-upload"
+                disabled={isProcessing}
               />
               <label
                 htmlFor="audio-upload"
-                className="flex items-center justify-center w-full px-4 py-6 bg-slate-50 border border-slate-300 rounded cursor-pointer hover:bg-slate-100 hover:border-slate-400 transition-colors"
+                className={`flex items-center justify-center w-full px-4 py-6 bg-slate-50 border border-slate-300 rounded transition-colors ${
+                  isProcessing
+                    ? "cursor-not-allowed opacity-60"
+                    : "cursor-pointer hover:bg-slate-100 hover:border-slate-400"
+                }`}
               >
                 <div className="text-center">
                   <svg
@@ -212,11 +222,12 @@ const App = () => {
               <button
                 type="button"
                 onClick={() => setHumFrequency(50)}
+                disabled={isProcessing}
                 className={`px-4 py-3 border rounded font-medium text-sm transition-colors ${
                   humFrequency === 50
                     ? "bg-slate-900 text-white border-slate-900"
                     : "bg-white text-slate-700 border-slate-300 hover:border-slate-400"
-                }`}
+                } ${isProcessing ? "opacity-60 cursor-not-allowed" : ""}`}
               >
                 <div className="font-semibold">50 Hz</div>
                 <div className="text-xs mt-0.5 opacity-75">
@@ -226,11 +237,12 @@ const App = () => {
               <button
                 type="button"
                 onClick={() => setHumFrequency(60)}
+                disabled={isProcessing}
                 className={`px-4 py-3 border rounded font-medium text-sm transition-colors ${
                   humFrequency === 60
                     ? "bg-slate-900 text-white border-slate-900"
                     : "bg-white text-slate-700 border-slate-300 hover:border-slate-400"
-                }`}
+                } ${isProcessing ? "opacity-60 cursor-not-allowed" : ""}`}
               >
                 <div className="font-semibold">60 Hz</div>
                 <div className="text-xs mt-0.5 opacity-75">Americas, Japan</div>
@@ -242,7 +254,7 @@ const App = () => {
           <button
             onClick={handleProcessAudio}
             disabled={!selectedFile || isProcessing}
-            className="w-full px-4 py-2.5 bg-slate-900 text-white font-medium text-sm rounded hover:bg-slate-800 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors"
+            className="w-full px-4 py-2.5 bg-slate-900 text-white font-medium text-sm rounded hover:bg-slate-800 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors"
           >
             {isProcessing ? (
               <span className="flex items-center justify-center gap-2">
@@ -271,6 +283,40 @@ const App = () => {
               "Process Audio"
             )}
           </button>
+
+          {/* Processing Status Card */}
+          {isProcessing && (
+            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded">
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0">
+                  <svg
+                    className="animate-spin h-5 w-5 text-blue-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-blue-900">
+                    Processing...
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Status Messages */}
           {error && (
@@ -357,7 +403,8 @@ const App = () => {
                     className="w-full h-9"
                   />
                   <p className="text-xs text-slate-600 mt-2">
-                    Contains {humFrequency} Hz interference
+                    <span className="font-medium">With hum:</span> Contains{" "}
+                    {humFrequency} Hz interference
                   </p>
                 </div>
               )}
@@ -389,7 +436,7 @@ const App = () => {
                     className="w-full h-9"
                   />
                   <p className="text-xs text-green-600 mt-2">
-                    Interference removed
+                    <span className="font-medium">Clean:</span> Hum filtered out
                   </p>
                 </div>
               )}

@@ -18,6 +18,11 @@ const App = () => {
   const [detectedHumFrequency, setDetectedHumFrequency] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [estimatedTime, setEstimatedTime] = useState(null);
+  const [showConfirmReset, setShowConfirmReset] = useState(false);
+  const [lastError, setLastError] = useState(null);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   // Auto-detect power frequency based on timezone/location
   useEffect(() => {
@@ -146,6 +151,18 @@ const App = () => {
     [humFrequency]
   );
 
+  // Calculate estimated processing time based on file size
+  const calculateEstimatedTime = useCallback((fileSize) => {
+    // Rough estimate: ~2-5 seconds per MB
+    const sizeInMB = fileSize / (1024 * 1024);
+    const seconds = Math.ceil(sizeInMB * 3);
+
+    if (seconds < 5) return "a few seconds";
+    if (seconds < 60) return `${seconds} seconds`;
+    const minutes = Math.ceil(seconds / 60);
+    return `${minutes} minute${minutes > 1 ? "s" : ""}`;
+  }, []);
+
   const handleFileChange = useCallback(
     (event) => {
       const file = event.target.files[0];
@@ -157,6 +174,22 @@ const App = () => {
           setSuccessMessage(null);
           setUploadProgress(0);
           setDetectedHumFrequency(null);
+          setShowSuccess(false);
+          setLastError(null);
+
+          // Calculate and set estimated processing time
+          const timeEstimate = calculateEstimatedTime(file.size);
+          setEstimatedTime(timeEstimate);
+
+          // Warn for large files
+          const sizeInMB = file.size / (1024 * 1024);
+          if (sizeInMB > 25) {
+            setSuccessMessage(
+              `Large file detected (${sizeInMB.toFixed(
+                1
+              )} MB). Processing may take ${timeEstimate}.`
+            );
+          }
 
           if (originalAudioUrl) URL.revokeObjectURL(originalAudioUrl);
           if (processedAudioUrl) URL.revokeObjectURL(processedAudioUrl);
@@ -177,7 +210,7 @@ const App = () => {
         }
       }
     },
-    [originalAudioUrl, processedAudioUrl, analyzeAudio]
+    [originalAudioUrl, processedAudioUrl, analyzeAudio, calculateEstimatedTime]
   );
 
   const handleFrequencyChange = useCallback(
@@ -234,6 +267,22 @@ const App = () => {
           setSuccessMessage(null);
           setUploadProgress(0);
           setDetectedHumFrequency(null);
+          setShowSuccess(false);
+          setLastError(null);
+
+          // Calculate and set estimated processing time
+          const timeEstimate = calculateEstimatedTime(file.size);
+          setEstimatedTime(timeEstimate);
+
+          // Warn for large files
+          const sizeInMB = file.size / (1024 * 1024);
+          if (sizeInMB > 25) {
+            setSuccessMessage(
+              `Large file detected (${sizeInMB.toFixed(
+                1
+              )} MB). Processing may take ${timeEstimate}.`
+            );
+          }
 
           if (originalAudioUrl) URL.revokeObjectURL(originalAudioUrl);
           if (processedAudioUrl) URL.revokeObjectURL(processedAudioUrl);
@@ -253,7 +302,7 @@ const App = () => {
         }
       }
     },
-    [originalAudioUrl, processedAudioUrl, analyzeAudio]
+    [originalAudioUrl, processedAudioUrl, analyzeAudio, calculateEstimatedTime]
   );
 
   const base64ToBlob = (base64, mimeType) => {
@@ -276,9 +325,22 @@ const App = () => {
     setError(null);
     setSuccessMessage(null);
     setUploadProgress(0);
+    setShowSuccess(false);
+    setIsRetrying(false);
 
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
+
+    // Simulate upload progress
+    const progressInterval = setInterval(() => {
+      setUploadProgress((prev) => {
+        if (prev >= 90) {
+          clearInterval(progressInterval);
+          return 90;
+        }
+        return prev + 10;
+      });
+    }, 300);
 
     try {
       const formData = new FormData();
@@ -291,12 +353,40 @@ const App = () => {
         signal: abortController.signal,
       });
 
+      clearInterval(progressInterval);
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Server error: ${response.status}`);
+        const errorMessage =
+          errorData.error || `Server error (${response.status})`;
+
+        // Store error for retry
+        setLastError({
+          message: errorMessage,
+          file: selectedFile,
+          frequency: humFrequency,
+        });
+
+        // Provide more helpful error messages
+        if (response.status === 413) {
+          throw new Error(
+            "File too large. Please use a smaller file (max 50MB)."
+          );
+        } else if (response.status === 503) {
+          throw new Error(
+            "Server is currently unavailable. Please try again in a moment."
+          );
+        } else if (response.status >= 500) {
+          throw new Error(
+            `Server error: ${errorMessage}. You can retry processing.`
+          );
+        } else {
+          throw new Error(errorMessage);
+        }
       }
 
       const data = await response.json();
+      setUploadProgress(100);
 
       if (processedAudioUrl) {
         URL.revokeObjectURL(processedAudioUrl);
@@ -309,12 +399,20 @@ const App = () => {
       setProcessedAudioData(data.processedAudio);
       setDetectedHumFrequency(data.detectedFrequency || data.humFrequency);
       setSuccessMessage(data.message || "Audio processed successfully!");
-      setUploadProgress(100);
+      setShowSuccess(true);
+      setLastError(null);
+
+      // Auto-hide success animation after 2 seconds
+      setTimeout(() => setShowSuccess(false), 2000);
     } catch (err) {
+      clearInterval(progressInterval);
+      setUploadProgress(0);
+
       if (err.name === "AbortError") {
         setError("Processing cancelled");
+        setLastError(null);
       } else {
-        setError(err.message || "Failed to process audio");
+        setError(err.message || "Failed to process audio. Please try again.");
       }
     } finally {
       setIsProcessing(false);
@@ -327,6 +425,13 @@ const App = () => {
       abortControllerRef.current.abort();
     }
   }, []);
+
+  const handleRetry = useCallback(() => {
+    if (lastError && selectedFile) {
+      setIsRetrying(true);
+      handleProcessAudio();
+    }
+  }, [lastError, selectedFile, handleProcessAudio]);
 
   const handleDownload = useCallback(() => {
     if (!processedAudioData) return;
@@ -342,7 +447,16 @@ const App = () => {
     URL.revokeObjectURL(url);
   }, [processedAudioData, selectedFile]);
 
-  const handleReset = useCallback(() => {
+  const handleResetClick = useCallback(() => {
+    // Only show confirmation if there's processed audio
+    if (processedAudioUrl) {
+      setShowConfirmReset(true);
+    } else {
+      handleResetConfirmed();
+    }
+  }, [processedAudioUrl]);
+
+  const handleResetConfirmed = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -360,9 +474,17 @@ const App = () => {
     setDetectedHumFrequency(null);
     setIsProcessing(false);
     setUploadProgress(0);
+    setShowConfirmReset(false);
+    setShowSuccess(false);
+    setEstimatedTime(null);
+    setLastError(null);
 
     if (fileInputRef.current) fileInputRef.current.value = "";
   }, [originalAudioUrl, processedAudioUrl]);
+
+  const handleCancelReset = useCallback(() => {
+    setShowConfirmReset(false);
+  }, []);
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -697,6 +819,13 @@ const App = () => {
               </p>
             </div>
 
+            {/* Estimated Time */}
+            {estimatedTime && selectedFile && !processedAudioUrl && (
+              <div className="text-center text-xs text-neutral-500">
+                Estimated processing time: {estimatedTime}
+              </div>
+            )}
+
             {/* Process Button */}
             <button
               onClick={handleProcessAudio}
@@ -709,12 +838,40 @@ const App = () => {
             {/* Messages */}
             {error && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-700">{error}</p>
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm text-red-700 flex-1">{error}</p>
+                  {lastError && (
+                    <button
+                      onClick={handleRetry}
+                      disabled={isRetrying}
+                      className="text-xs font-medium text-red-700 hover:text-red-800 underline whitespace-nowrap"
+                    >
+                      {isRetrying ? "Retrying..." : "Retry"}
+                    </button>
+                  )}
+                </div>
               </div>
             )}
-            {successMessage && (
+            {successMessage && !error && (
               <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-sm text-green-700">{successMessage}</p>
+                <div className="flex items-center gap-2">
+                  {showSuccess && (
+                    <svg
+                      className="w-5 h-5 text-green-600 animate-checkmark flex-shrink-0"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={3}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  )}
+                  <p className="text-sm text-green-700">{successMessage}</p>
+                </div>
               </div>
             )}
           </div>
@@ -769,6 +926,23 @@ const App = () => {
                   </p>
                 </div>
               )}
+              {/* Skeleton Loader for Processing */}
+              {isProcessing && !processedAudioUrl && (
+                <div className="backdrop-blur-md bg-white/50 rounded-xl p-5 border border-neutral-200 animate-pulse-subtle">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-9 h-9 bg-neutral-200 rounded-lg animate-pulse" />
+                      <div>
+                        <div className="h-4 w-20 bg-neutral-200 rounded mb-1" />
+                        <div className="h-3 w-24 bg-neutral-100 rounded" />
+                      </div>
+                    </div>
+                    <div className="h-5 w-12 bg-neutral-200 rounded" />
+                  </div>
+                  <div className="w-full h-12 bg-neutral-200 rounded-lg mb-2" />
+                  <div className="h-3 w-32 bg-neutral-100 rounded" />
+                </div>
+              )}
               {processedAudioUrl && (
                 <div className="backdrop-blur-md bg-white/50 rounded-xl p-5 border border-neutral-200">
                   <div className="flex items-center justify-between mb-3">
@@ -814,16 +988,65 @@ const App = () => {
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={handleDownload}
-                className="flex-1 px-5 py-2.5 bg-neutral-800 text-white font-medium text-sm rounded-lg hover:bg-neutral-700 transition-colors"
+                disabled={!processedAudioData}
+                className="flex-1 px-5 py-2.5 bg-neutral-800 text-white font-medium text-sm rounded-lg hover:bg-neutral-700 disabled:bg-neutral-300 disabled:cursor-not-allowed transition-colors"
               >
                 Download Clean Audio
               </button>
               <button
-                onClick={handleReset}
+                onClick={handleResetClick}
                 className="sm:w-auto px-5 py-2.5 backdrop-blur-md bg-white/50 text-neutral-700 font-medium text-sm rounded-lg border border-neutral-200 hover:bg-white/70 transition-colors"
               >
                 Reset
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Confirmation Dialog */}
+        {showConfirmReset && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in fade-in duration-300">
+              <div className="flex items-start gap-4 mb-4">
+                <div className="w-12 h-12 bg-neutral-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <svg
+                    className="w-6 h-6 text-neutral-700"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-neutral-900 mb-2">
+                    Reset and Start Over?
+                  </h3>
+                  <p className="text-sm text-neutral-600">
+                    This will clear your current audio files and processed
+                    results. You haven't downloaded the cleaned audio yet.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleCancelReset}
+                  className="flex-1 px-4 py-2.5 bg-neutral-100 text-neutral-700 font-medium text-sm rounded-lg hover:bg-neutral-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleResetConfirmed}
+                  className="flex-1 px-4 py-2.5 bg-neutral-800 text-white font-medium text-sm rounded-lg hover:bg-neutral-700 transition-colors"
+                >
+                  Reset Anyway
+                </button>
+              </div>
             </div>
           </div>
         )}

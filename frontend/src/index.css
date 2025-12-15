@@ -67,11 +67,63 @@ html {
 
 /* Focus styles for accessibility */
 *:focus-visible {
-  outline: 2px solid #3b82f6;
+  outline: 3px solid #262626;
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+button:focus-visible {
+  outline: 3px solid #262626;
+  outline-offset: 2px;
+}
+
+label:focus-within {
+  outline: 3px solid #262626;
   outline-offset: 2px;
 }
 
 /* Simple audio player styling - let native controls shine */
 audio {
   outline: none;
+}
+
+audio:focus-visible {
+  outline: 2px solid #262626;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Success animation */
+@keyframes checkmark {
+  0% {
+    transform: scale(0) rotate(45deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2) rotate(45deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(45deg);
+    opacity: 1;
+  }
+}
+
+.animate-checkmark {
+  animation: checkmark 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* Pulse animation for processing */
+@keyframes pulse-subtle {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }

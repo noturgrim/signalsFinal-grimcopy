@@ -1,297 +1,171 @@
-# Audio Hum Remover - Full-Stack Application
+# Audio Hum Remover
 
-A comprehensive full-stack web application that removes power line hum (50Hz/60Hz) from audio files using IIR notch filters. Built with Python Flask backend and React frontend with Tailwind CSS.
+A web-based audio processing application that removes electrical power line interference from audio recordings using advanced digital signal processing techniques.
+
+## Overview
+
+Power line hum at 50Hz or 60Hz frequencies creates unwanted background noise in audio recordings. This application analyzes audio files, automatically detects the interference frequency, and removes it along with its harmonics using precision IIR notch filters, resulting in clean, professional-quality audio.
 
 ## Features
 
-- 🎵 **Audio Processing**: Remove power line hum using scipy IIR notch filters
-- 🎯 **Dual Frequency Support**: Choose between 50 Hz (Europe/Asia/Africa) or 60 Hz (Americas/Japan)
-- 🎨 **Beautiful UI**: Modern, responsive dark theme built with Tailwind CSS 4.1
-- 🎧 **Audio Comparison**: Side-by-side playback of original and processed audio
-- 💾 **Easy Download**: Export processed audio as WAV file
-- 📱 **Mobile Friendly**: Fully responsive design for all devices
+- Automatic hum frequency detection (50Hz/60Hz)
+- Manual frequency selection for custom processing
+- Support for multiple audio formats (WAV, MP3, OGG, FLAC)
+- Real-time audio comparison (original vs processed)
+- Intuitive drag-and-drop interface
+- Instant download of processed audio
+- Responsive design for all devices
 
 ## Technology Stack
 
 ### Backend
-
-- **Python 3.8+**
-- **Flask** - Web framework
-- **scipy** - Signal processing and filter design
-- **numpy** - Numerical computations
-- **pydub** - Audio file handling (MP3, OGG, FLAC support)
+- Python 3.11
+- Flask (REST API framework)
+- SciPy (IIR notch filter implementation)
+- NumPy (numerical processing)
+- Pydub (multi-format audio handling)
 
 ### Frontend
+- React 19
+- Vite (build tool and development server)
+- Tailwind CSS 4.1
+- Modern JavaScript (ES6+)
 
-- **React 18** - UI framework
-- **Vite** - Build tool and dev server
-- **Tailwind CSS 4.1** - Styling
-- **Modern ES6+** - JavaScript features
-
-## How It Works
-
-### Audio Processing Pipeline
-
-1. **Upload**: User uploads an audio file (WAV, MP3, OGG, or FLAC)
-2. **Frequency Selection**: User selects the power line frequency (50 Hz or 60 Hz)
-3. **Filter Design**: Backend designs IIR notch filters using `scipy.signal.iirnotch`
-4. **Filtering**: Applies notch filters at:
-   - Fundamental frequency (f₀)
-   - First harmonic (2 × f₀)
-   - Second harmonic (3 × f₀)
-5. **Output**: Returns processed audio as base64-encoded WAV file
-6. **Playback & Download**: User can compare and download the cleaned audio
-
-### IIR Notch Filter Specifications
-
-- **Filter Type**: Infinite Impulse Response (IIR) Notch Filter
-- **Quality Factor (Q)**: 30 (narrow notch to preserve surrounding frequencies)
-- **Center Frequencies**: f₀, 2f₀, 3f₀ (where f₀ is 50 or 60 Hz)
-- **Implementation**: `scipy.signal.iirnotch` and `scipy.signal.lfilter`
-
-## Installation & Setup
+## Installation
 
 ### Prerequisites
-
-- **Python 3.8 or higher**
-- **Node.js 16 or higher**
-- **npm or yarn**
+- Python 3.11 or higher
+- Node.js 16 or higher
+- npm or yarn package manager
 
 ### Backend Setup
 
-1. **Navigate to backend directory**:
+Navigate to the backend directory and install dependencies:
 
-   ```bash
-   cd signalsFinal/backend
-   ```
+```bash
+cd backend
+pip install -r requirements.txt
+python app.py
+```
 
-2. **Install Python dependencies**:
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Start the Flask backend**:
-
-   ```bash
-   python app.py
-   ```
-
-   The backend will start on `http://localhost:5000`
+The backend API will start on `http://localhost:5000`
 
 ### Frontend Setup
 
-1. **Open a new terminal** (keep the backend running)
+Navigate to the frontend directory and install dependencies:
 
-2. **Navigate to frontend directory**:
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-   ```bash
-   cd signalsFinal/frontend
-   ```
-
-3. **Install Node.js dependencies**:
-
-   ```bash
-   npm install
-   ```
-
-4. **Start the development server**:
-
-   ```bash
-   npm run dev
-   ```
-
-   The frontend will start on `http://localhost:3000` and open automatically in your browser.
+The frontend application will start on `http://localhost:5173`
 
 ## Usage
 
-1. **Open the application** in your browser at `http://localhost:3000`
+1. Open the application in your web browser
+2. Upload an audio file by clicking or dragging into the upload area
+3. Select frequency mode (Auto-detect, 50Hz, or 60Hz)
+4. Click "Process Audio" to remove the interference
+5. Compare the original and processed audio using the built-in players
+6. Download the cleaned audio file
 
-2. **Upload an audio file**:
+## Technical Details
 
-   - Click the upload area or drag and drop
-   - Supported formats: WAV, MP3, OGG, FLAC
-   - Maximum file size: 50MB
+### Signal Processing
 
-3. **Select hum frequency**:
+The application employs cascaded IIR notch filters to remove power line interference:
 
-   - Choose **50 Hz** for Europe, Asia, Africa, Australia
-   - Choose **60 Hz** for Americas (USA, Canada, etc.) and Japan
+- **Filter Type**: Second-order IIR notch filter
+- **Quality Factor**: Q = 30 (narrow bandwidth for precise frequency removal)
+- **Target Frequencies**: Fundamental (50/60Hz) and harmonics (100/120Hz, 150/180Hz, etc.)
+- **Implementation**: Zero-phase filtering via `scipy.signal.filtfilt` to prevent audio distortion
 
-4. **Process the audio**:
+### API Endpoints
 
-   - Click the "Process Audio" button
-   - Wait for processing to complete (usually a few seconds)
+#### POST `/api/process-audio`
+Processes uploaded audio file to remove hum interference.
 
-5. **Compare results**:
-
-   - Listen to both original and processed audio
-   - Compare the difference in audio quality
-
-6. **Download**:
-   - Click "Download Processed Audio" to save the cleaned file
-   - File will be saved as WAV format
-
-## API Endpoints
-
-### POST `/api/process-audio`
-
-Process an audio file to remove power line hum.
-
-**Request**:
-
+**Request:**
 - Content-Type: `multipart/form-data`
-- Body:
-  - `file`: Audio file (WAV, MP3, OGG, or FLAC)
-  - `humFrequency`: Integer, either 50 or 60 (optional, defaults to 60)
+- Parameters:
+  - `file`: Audio file (required)
+  - `humFrequency`: "auto" | 50 | 60 (optional, default: "auto")
 
-**Response** (Success):
-
+**Response:**
 ```json
 {
   "success": true,
   "processedAudio": "base64_encoded_wav_data",
   "sampleRate": 44100,
   "humFrequency": 60,
-  "message": "Successfully removed 60 Hz hum and harmonics"
+  "detectedFrequency": 60,
+  "autoDetected": true,
+  "message": "Auto-detected and removed 60 Hz hum and harmonics"
 }
 ```
 
-**Response** (Error):
+#### POST `/api/detect-hum`
+Analyzes audio file to detect hum frequency without processing.
 
-```json
-{
-  "error": "Error message describing the issue"
-}
-```
-
-### GET `/api/health`
-
-Health check endpoint.
-
-**Response**:
-
-```json
-{
-  "status": "ok",
-  "message": "Audio processing API is running"
-}
-```
+#### GET `/api/health`
+Health check endpoint for monitoring service status.
 
 ## Project Structure
 
 ```
-signalsFinal/
 ├── backend/
-│   ├── app.py             # Flask backend with audio processing
-│   └── requirements.txt   # Python dependencies
+│   ├── app.py              # Flask API and signal processing
+│   ├── requirements.txt    # Python dependencies
+│   └── Sample Audio/       # Test audio files
 ├── frontend/
 │   ├── src/
-│   │   ├── App.jsx        # Main React component
-│   │   ├── main.jsx       # React entry point
-│   │   └── styles.css     # Tailwind CSS imports
-│   ├── index.html         # HTML entry point
-│   ├── package.json       # Node.js dependencies and scripts
-│   └── vite.config.js     # Vite configuration
-├── README.md              # This file
-├── QUICKSTART.md          # Quick setup guide
-└── ARCHITECTURE.md        # Technical details
+│   │   ├── App.jsx         # Main React component
+│   │   ├── main.jsx        # Application entry point
+│   │   └── index.css       # Global styles
+│   ├── public/
+│   │   └── hum.svg         # Application icon
+│   ├── index.html          # HTML template
+│   ├── package.json        # Node dependencies
+│   └── vite.config.js      # Vite configuration
+└── README.md
 ```
 
-## Technical Details
+## Performance Considerations
 
-### Filter Design Parameters
-
-- **Notch Filter Design**: `scipy.signal.iirnotch(w0, Q, fs)`
-
-  - `w0`: Normalized frequency (center_freq / nyquist_freq)
-  - `Q`: Quality factor = 30
-  - `fs`: Sample rate of the audio
-
-- **Applied Filters**:
-  1. Primary notch at fundamental (50 or 60 Hz)
-  2. Second notch at first harmonic (100 or 120 Hz)
-  3. Third notch at second harmonic (150 or 180 Hz)
-
-### Audio Format Support
-
-- **Native WAV**: Handled by `scipy.io.wavfile`
-- **MP3/OGG/FLAC**: Requires `pydub` (which uses FFmpeg under the hood)
-- **Output Format**: Always WAV (16-bit PCM)
-
-### CORS Configuration
-
-The backend is configured with CORS enabled to allow requests from the React development server. In production, configure CORS appropriately for your domain.
-
-## Troubleshooting
-
-### Backend Issues
-
-**Error: "No module named 'scipy'"**
-
-- Solution: Run `pip install -r requirements.txt` to install all required packages
-
-**Error: "pydub is required for MP3 processing"**
-
-- Solution: Install pydub: `pip install pydub`
-- For MP3 support, you may also need FFmpeg installed on your system
-
-**Port 5000 already in use**
-
-- Solution: Change the port in `app.py` (last line) from 5000 to another port
-
-### Frontend Issues
-
-**Error: "Cannot find module 'react'"**
-
-- Solution: Run `npm install` in the project directory
-
-**Error: "Failed to fetch"**
-
-- Solution: Ensure the backend is running on `http://localhost:5000`
-- Check CORS settings if accessing from a different domain
-
-**Tailwind styles not working**
-
-- Solution: Ensure `src/styles.css` contains `@import "tailwindcss";`
-- Restart the dev server: `npm run dev`
+- Maximum file size: 50MB
+- Processing time: 1-5 seconds for typical audio files
+- Supported sample rates: All standard rates (8kHz - 192kHz)
+- Memory usage: Approximately 3-5x the input file size during processing
 
 ## Browser Compatibility
 
-- Chrome 90+
+- Chrome/Edge 90+
 - Firefox 88+
 - Safari 14+
-- Edge 90+
 
-## Performance
+## Deployment
 
-- **File Size Limit**: 50MB (configurable in `app.py`)
-- **Processing Time**: Typically 1-5 seconds for most audio files
-- **Memory Usage**: Depends on audio file size; approximately 3-5x the file size during processing
+The application is designed for deployment on Render.com or similar platforms. Configure environment variables:
 
-## Future Enhancements
+### Backend
+- `PORT`: Automatically provided by hosting platform
+- `FRONTEND_URL`: Your frontend domain for CORS configuration
 
-- [ ] Support for more audio formats (AAC, M4A)
-- [ ] Adjustable Q factor for filter customization
-- [ ] Batch processing multiple files
-- [ ] Visualization of frequency spectrum before/after
-- [ ] Additional harmonic removal (4th, 5th harmonics)
-- [ ] Real-time preview during processing
+### Frontend
+- `VITE_API_URL`: Your backend API URL
+
+## Contributors
+
+- Dan Lius Monsales
+- Eduardo Miguel Cortes
+- Regine Christian Buenafe
 
 ## License
 
-This project is provided as-is for educational and personal use.
-
-## Credits
-
-Built with:
-
-- [Flask](https://flask.palletsprojects.com/)
-- [React](https://react.dev/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [SciPy](https://scipy.org/)
-- [Vite](https://vitejs.dev/)
+This project is provided for educational and personal use.
 
 ---
 
-**Enjoy your hum-free audio! 🎵**
+Built with Flask, React, and SciPy

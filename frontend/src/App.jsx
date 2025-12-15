@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import AudioPlayer from "./components/AudioPlayer";
 
 // Get API URL from environment variable
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -877,129 +878,246 @@ const App = () => {
           </div>
         </div>
 
-        {/* Results */}
+        {/* Results - Enhanced Layout */}
         {(originalAudioUrl || processedAudioUrl) && (
-          <div className="backdrop-blur-lg bg-white/70 rounded-2xl shadow-lg border border-neutral-200/60 p-5 sm:p-8">
-            <h2 className="text-lg font-semibold text-neutral-900 mb-5">
-              Audio Comparison
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-5">
-              {originalAudioUrl && (
-                <div className="backdrop-blur-md bg-white/50 rounded-xl p-5 border border-neutral-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-9 h-9 bg-neutral-800 rounded-lg flex items-center justify-center">
-                        <svg
-                          className="w-5 h-5 text-white"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
-                          />
-                        </svg>
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-neutral-900">
-                          Original
-                        </h3>
-                        <p className="text-xs text-neutral-500">
-                          With interference
-                        </p>
-                      </div>
-                    </div>
-                    <span className="px-2 py-0.5 bg-neutral-800 text-white text-xs font-medium rounded">
-                      {detectedHumFrequency || humFrequency} Hz
-                    </span>
-                  </div>
-                  <audio
-                    controls
-                    src={originalAudioUrl}
-                    className="w-full mb-2"
-                  />
-                  <p className="text-xs text-neutral-600">
-                    {selectedFile?.name}
-                  </p>
+          <div className="backdrop-blur-lg bg-white/70 rounded-2xl shadow-lg border border-neutral-200/60 p-5 sm:p-8 space-y-6">
+            {/* Header with Stats */}
+            <div className="flex items-center justify-between pb-4 border-b border-neutral-200">
+              <div>
+                <h2 className="text-lg font-semibold text-neutral-900 mb-1">
+                  Audio Results
+                </h2>
+                <p className="text-xs text-neutral-500">
+                  Compare original and processed audio
+                </p>
+              </div>
+              {processedAudioUrl && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-lg">
+                  <svg
+                    className="w-4 h-4 text-green-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  <span className="text-xs font-medium text-green-700">
+                    Processed
+                  </span>
                 </div>
               )}
+            </div>
+
+            {/* Audio Players */}
+            <div className="space-y-4">
+              {/* Original Audio */}
+              {originalAudioUrl && (
+                <div className="relative group">
+                  <div className="backdrop-blur-md bg-gradient-to-br from-white/80 to-white/60 rounded-xl p-5 border border-neutral-200 hover:border-neutral-300 transition-all duration-200 shadow-sm hover:shadow-md">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-neutral-700 to-neutral-900 rounded-xl flex items-center justify-center shadow-lg">
+                          <svg
+                            className="w-5 h-5 text-white"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
+                            />
+                          </svg>
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-semibold text-neutral-900 mb-0.5">
+                            Original Audio
+                          </h3>
+                          <p className="text-xs text-neutral-500">
+                            Contains {detectedHumFrequency || humFrequency} Hz
+                            interference
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-1 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-md">
+                          {detectedHumFrequency || humFrequency} Hz
+                        </span>
+                      </div>
+                    </div>
+                    <AudioPlayer src={originalAudioUrl} variant="default" />
+                    <div className="mt-3 pt-3 border-t border-neutral-200">
+                      <p className="text-xs text-neutral-600 font-medium truncate">
+                        📄 {selectedFile?.name}
+                      </p>
+                      <p className="text-xs text-neutral-400 mt-1">
+                        {(selectedFile?.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Arrow Indicator */}
+              {originalAudioUrl && (processedAudioUrl || isProcessing) && (
+                <div className="flex items-center justify-center">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-neutral-100 rounded-full">
+                    <svg
+                      className={`w-4 h-4 text-neutral-600 ${
+                        isProcessing ? "animate-pulse" : ""
+                      }`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 14l-7 7m0 0l-7-7m7 7V3"
+                      />
+                    </svg>
+                    <span className="text-xs font-medium text-neutral-600">
+                      {isProcessing ? "Processing..." : "Processed"}
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {/* Skeleton Loader for Processing */}
               {isProcessing && !processedAudioUrl && (
-                <div className="backdrop-blur-md bg-white/50 rounded-xl p-5 border border-neutral-200 animate-pulse-subtle">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-9 h-9 bg-neutral-200 rounded-lg animate-pulse" />
-                      <div>
-                        <div className="h-4 w-20 bg-neutral-200 rounded mb-1" />
-                        <div className="h-3 w-24 bg-neutral-100 rounded" />
+                <div className="relative">
+                  <div className="backdrop-blur-md bg-gradient-to-br from-white/80 to-white/60 rounded-xl p-5 border border-neutral-200 animate-pulse-subtle">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-neutral-200 rounded-xl animate-pulse" />
+                        <div>
+                          <div className="h-4 w-24 bg-neutral-200 rounded mb-1.5" />
+                          <div className="h-3 w-32 bg-neutral-100 rounded" />
+                        </div>
                       </div>
+                      <div className="h-6 w-16 bg-neutral-200 rounded-md" />
                     </div>
-                    <div className="h-5 w-12 bg-neutral-200 rounded" />
+                    <div className="w-full h-10 bg-neutral-200 rounded-lg mb-3" />
+                    <div className="pt-3 border-t border-neutral-200">
+                      <div className="h-3 w-40 bg-neutral-100 rounded mb-2" />
+                      <div className="h-3 w-20 bg-neutral-100 rounded" />
+                    </div>
                   </div>
-                  <div className="w-full h-12 bg-neutral-200 rounded-lg mb-2" />
-                  <div className="h-3 w-32 bg-neutral-100 rounded" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="bg-white/90 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg">
+                      <p className="text-sm font-medium text-neutral-700">
+                        Processing audio...
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
+
+              {/* Processed Audio */}
               {processedAudioUrl && (
-                <div className="backdrop-blur-md bg-white/50 rounded-xl p-5 border border-neutral-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-9 h-9 bg-neutral-800 rounded-lg flex items-center justify-center">
-                        <svg
-                          className="w-5 h-5 text-white"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
-                        </svg>
+                <div className="relative group">
+                  <div className="backdrop-blur-md bg-gradient-to-br from-green-50/80 to-white/80 rounded-xl p-5 border-2 border-green-200 hover:border-green-300 transition-all duration-200 shadow-sm hover:shadow-md">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-green-700 rounded-xl flex items-center justify-center shadow-lg">
+                          <svg
+                            className="w-5 h-5 text-white"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-semibold text-neutral-900 mb-0.5">
+                            Clean Audio
+                          </h3>
+                          <p className="text-xs text-green-700 font-medium">
+                            Interference removed successfully
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-neutral-900">
-                          Processed
-                        </h3>
-                        <p className="text-xs text-neutral-500">Hum removed</p>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-1 bg-green-100 border border-green-300 text-green-800 text-xs font-semibold rounded-md">
+                          Clean
+                        </span>
                       </div>
                     </div>
-                    <span className="px-2 py-0.5 bg-neutral-800 text-white text-xs font-medium rounded">
-                      Clean
-                    </span>
+                    <AudioPlayer src={processedAudioUrl} variant="success" />
+                    <div className="mt-3 pt-3 border-t border-green-200">
+                      <p className="text-xs text-neutral-700 font-medium">
+                        ✨ Filtered {detectedHumFrequency || humFrequency} Hz +
+                        harmonics (120Hz, 180Hz, etc.)
+                      </p>
+                      <p className="text-xs text-green-600 mt-1 font-medium">
+                        Ready to download
+                      </p>
+                    </div>
                   </div>
-                  <audio
-                    controls
-                    src={processedAudioUrl}
-                    className="w-full mb-2"
-                  />
-                  <p className="text-xs text-neutral-600">
-                    Filtered {detectedHumFrequency || humFrequency} Hz +
-                    harmonics
-                  </p>
                 </div>
               )}
             </div>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={handleDownload}
-                disabled={!processedAudioData}
-                className="flex-1 px-5 py-2.5 bg-neutral-800 text-white font-medium text-sm rounded-lg hover:bg-neutral-700 disabled:bg-neutral-300 disabled:cursor-not-allowed transition-colors"
-              >
-                Download Clean Audio
-              </button>
-              <button
-                onClick={handleResetClick}
-                className="sm:w-auto px-5 py-2.5 backdrop-blur-md bg-white/50 text-neutral-700 font-medium text-sm rounded-lg border border-neutral-200 hover:bg-white/70 transition-colors"
-              >
-                Reset
-              </button>
-            </div>
+
+            {/* Action Buttons */}
+            {processedAudioUrl && (
+              <div className="pt-4 border-t border-neutral-200">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    onClick={handleDownload}
+                    disabled={!processedAudioData}
+                    className="flex items-center justify-center gap-2 px-5 py-3 bg-neutral-800 text-white font-medium text-sm rounded-xl hover:bg-neutral-700 disabled:bg-neutral-300 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                      />
+                    </svg>
+                    Download Clean Audio
+                  </button>
+                  <button
+                    onClick={handleResetClick}
+                    className="flex items-center justify-center gap-2 px-5 py-3 backdrop-blur-md bg-white/80 text-neutral-700 font-medium text-sm rounded-xl border border-neutral-200 hover:bg-white hover:border-neutral-300 transition-all duration-200"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                      />
+                    </svg>
+                    Process New Audio
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
